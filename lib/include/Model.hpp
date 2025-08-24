@@ -1,5 +1,5 @@
-#ifndef MODEL_HPP
-#define MODEL_HPP
+#ifndef MODEL_ORIGINAL_HPP
+#define MODEL_ORIGINAL_HPP
 
 #include <glad/glad.h> 
 
@@ -45,40 +45,13 @@ public:
 
     glm::vec3 localAabbMin = glm::vec3(FLT_MAX);
     glm::vec3 localAabbMax = glm::vec3(-FLT_MAX);
-   
-    Model(const Model&) = delete;
-    Model& operator=(const Model&) = delete;
 
-    Model(Model&& other) noexcept { *this = std::move(other); }
-    Model& operator=(Model&& other) noexcept {
-        if (this != &other) {
-            // cleanup self first
-            for (auto& tex : textures_loaded) {
-                glDeleteTextures(1, &tex.id);
-            }
-
-            // move members
-            textures_loaded = std::move(other.textures_loaded);
-            meshes          = std::move(other.meshes);
-            directory       = std::move(other.directory);
-            gammaCorrection = other.gammaCorrection;
-
-            other.textures_loaded.clear();
-        }
-        return *this;
+    // constructor, expects a filepath to a 3D model.
+    Model(string const &path, bool gamma = false, bool flipUVs = false) : gammaCorrection(gamma)
+    {
+        loadModel(path,flipUVs);
     }
 
-    ~Model() {
-        for (auto& tex : textures_loaded) {
-            glDeleteTextures(1, &tex.id);
-        }
-    }
-
-    Model(std::string const &path, bool gamma = false, bool flipUVs = false) : gammaCorrection(gamma) {
-        // stbi_set_flip_vertically_on_load(flipUVs);
-        loadModel(path);
-    }
-    Model() = default;
 
     void UpdateModelMatrix(){
         glm::mat4 transformX = glm::rotate(glm::mat4(1.0f),
@@ -106,11 +79,11 @@ public:
     }
 
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
-    void loadModel(string const &path, bool flipUVs = false)
+    void loadModel(string const &path,bool flipUVs)
     {
         // read file via ASSIMP
         Assimp::Importer importer;
-        const aiScene* scene;
+        const aiScene* scene;// = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
         if(flipUVs){
             scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices);
             // scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
@@ -119,9 +92,6 @@ public:
             scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace  | aiProcess_JoinIdenticalVertices);
             // scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace);
         }
-
-
-        // const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
         // check for errors
         if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
         {
@@ -271,13 +241,14 @@ private:
         // 2. specular maps
         vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-   
         // 3. normal maps
+        // std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+        // std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
         std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
         if (normalMaps.size() == 0){
              normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
         }
-
+        
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
         // 4. height maps
         std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
@@ -365,7 +336,7 @@ private:
         }
         else
         {
-            std::cout << "Texture failed to load at path: " << path << ". full path:" << filename << std::endl;
+            std::cout << "Texture failed to load at path: " << path << std::endl;
             stbi_image_free(data);
         }
 

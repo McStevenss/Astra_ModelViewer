@@ -8,9 +8,6 @@
 ## TODO
 * Model Loader
 * Mesh collisions
-* Refine Camera
-* Refine sliding and movement
-
 
 
 # Progress images

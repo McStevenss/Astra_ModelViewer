@@ -13,6 +13,7 @@
 #include <limits>
 #include <cmath>
 #include <memory>
+#include <algorithm>
 #include <Shader.hpp>
 #include "Camera.hpp"
 //ImGui + SDL
@@ -54,7 +55,9 @@ class Engine {
         GLuint ringVAO=0;
         glm::vec3 playerPos;
 
-        std::unique_ptr<Model> model;  // starts as nullptr
+        // std::unique_ptr<Model> model;  // starts as nullptr
+
+        // Model model;
 
         std::vector<glm::vec3> ringVerts;
 

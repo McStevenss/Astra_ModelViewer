@@ -47,33 +47,6 @@ public:
     glm::vec3 aabbMax = glm::vec3(-FLT_MAX);
     unsigned int VAO;
 
-
-    ~Mesh() {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
-        glDeleteBuffers(1, &EBO);
-    }
-
-    Mesh(const Mesh&) = delete;
-    Mesh& operator=(const Mesh&) = delete;
-
-    Mesh(Mesh&& other) noexcept { *this = std::move(other); }
-    Mesh& operator=(Mesh&& other) noexcept {
-        if (this != &other) {
-            glDeleteVertexArrays(1, &VAO);
-            glDeleteBuffers(1, &VBO);
-            glDeleteBuffers(1, &EBO);
-
-            VAO = other.VAO; VBO = other.VBO; EBO = other.EBO;
-            vertices = std::move(other.vertices);
-            indices  = std::move(other.indices);
-            textures = std::move(other.textures);
-
-            other.VAO = other.VBO = other.EBO = 0;
-        }
-        return *this;
-    }
-
     // constructor
     Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
     {
@@ -84,7 +57,6 @@ public:
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();
     }
-
 
     // render the mesh
     void Draw(Shader &shader) 

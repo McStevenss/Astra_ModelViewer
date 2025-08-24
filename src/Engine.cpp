@@ -3,7 +3,8 @@
 Engine::Engine()
 {
     cam = Camera(60.0f,0.1f,1000.0f);
-    cam.yaw = 4.7f;
+    // cam.yaw = 4.7f;
+    cam.yaw = 1.6f;
     cam.pitch = 0.4f;
     cam.targetPos = &targetpos;
 
@@ -12,7 +13,9 @@ Engine::Engine()
 
     // model = Model("models/UE_Hero_Male/Superhero_Male.gltf");
     // model = std::make_unique<Model>("models/UE_Hero_Male/Superhero_Male.gltf");
-    model = std::make_unique<Model>("models/backpack/backpack.obj",false,true);
+    // model = std::make_unique<Model>("models/backpack/backpack.obj",false,true);
+    // model = std::make_unique<Model>("models/backpack/backpack.obj",false,false);
+
     
     CreateFrameBuffer();
 }
@@ -61,38 +64,59 @@ float Engine::GetDeltaTime()
 
 void Engine::LoadNewModel(string const &path, bool flipUvs)
 {
-
     if(path == "") return;
-    // model = Model(path);
-    model = std::make_unique<Model>(path,false,flipUvs);
+    
+    std::string copyPath = path;          // create a modifiable copy
+    std::replace(copyPath.begin(), copyPath.end(), '\\', '/');
+    
+    // model = Model(copyPath,false,flipUvs);
+    // // model = std::make_unique<Model>(copyPath, false, flipUvs);
+    // // // model->UpdateModelMatrix();
+    // // auto newModel = std::make_unique<Model>(copyPath, false, flipUvs);
+    
+    // // newModel->UpdateModelMatrix();
+    // // model = std::move(newModel);
+    
+    // // Create a temporary model first
+    // // model = std::make_unique<Model>(copyPath, false, flipUVs);
+
+    // // Initialize its transform
+
+
+
 }
 
 void Engine::Start()
 {
     uint32_t prevTicks = SDL_GetTicks();
     // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(false);
     // stbi_set_flip_vertically_on_load(false);
     std::cout << "Engine starting" << std::endl;
-
+    
     const int   GRID_SIZE   = 256;          // 128x128 height samples
     const float TILE_SIZE   = 533.333f;     // WoW ADT ~533.333m, optional
     const float CELL_SIZE   = TILE_SIZE / (GRID_SIZE - 1);
-
+    
     Grid grid(20, CELL_SIZE); // 20x20 grid, spacing = 1.0
+    std::cout << "Grid cellsize: " << CELL_SIZE << std::endl;
 
     Shader gridShader("shaders/grid.vs","shaders/grid.fs"); 
     Shader modelShader("shaders/model.vs","shaders/model.fs");
 
+    // Model model("models/UE_Hero_Male/Superhero_Male.gltf",false,false);
+
+    Model model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
 
     while(running)
     {
         float dt = GetDeltaTime();
-    
+        
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        ImVec2 imgPos = RenderGUI(*model); // now it returns the top-left of the image inside window
+        ImVec2 imgPos = RenderGUI(model); // now it returns the top-left of the image inside window
         ImGui::Render();
         
         BindFramebuffer();
@@ -109,7 +133,7 @@ void Engine::Start()
 
 
 
-        targetpos.y = model->aabbMax.y/2.0f;
+        targetpos.y = model.aabbMax.y/2.0f;
 
 
         cam.Update(dt);
@@ -132,16 +156,16 @@ void Engine::Start()
         grid.Render(gridShader);
 
         
-        model->UpdateModelMatrix();
+        model.UpdateModelMatrix();
 
         modelShader.use();
         modelShader.setMat4("view",View);
         modelShader.setMat4("projection",Projection);
-        modelShader.setMat4("model",model->ModelMatrix);
+        modelShader.setMat4("model",model.ModelMatrix);
         modelShader.setVec3("viewPos",cam.position());
         modelShader.setVec3("lightPos",glm::vec3(10.0f));
         
-        model->Draw(modelShader);
+        model.Draw(modelShader);
 
         HandleInput(dt);
 
@@ -152,6 +176,10 @@ void Engine::Start()
 
         SDL_GL_SwapWindow(win);
     }
+
+    // model.reset();
+    SDL_GL_DeleteContext(glctx);
+    SDL_DestroyWindow(win);
 
 }
 
