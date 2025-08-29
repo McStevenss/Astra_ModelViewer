@@ -23,6 +23,8 @@
 #include "Grid.h"
 #include "Model.hpp"
 #include "Mesh.hpp"
+#include "CustomFileHeaders.h"
+
 class Engine {
 
     public:
@@ -42,7 +44,12 @@ class Engine {
         void UnbindFramebuffer();
         float GetDeltaTime();
         void LoadNewModel(string const &path, bool flipUvs);
-        ImVec2 RenderGUI(Model& model);
+        // ImVec2 RenderGUI(Model& model);
+        ImVec2 RenderGUI();
+
+        void SaveModelBinary(const Model& model, const std::string& path);
+        Model* LoadModelBinary(const std::string& path);
+
         Shader* heightMapShader;
         Shader* heightMapColorShader;
 

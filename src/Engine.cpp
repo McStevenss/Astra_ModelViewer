@@ -88,7 +88,8 @@ void Engine::Start()
     Shader gridShader("shaders/grid.vs","shaders/grid.fs"); 
     Shader modelShader("shaders/model.vs","shaders/model.fs");
 
-    model = new Model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
+    // model = new Model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
+    model = new Model("models/backpack/backpack.obj",false,false);
 
     while(running)
     {
@@ -96,7 +97,8 @@ void Engine::Start()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        ImVec2 imgPos = RenderGUI(*model);
+        // ImVec2 imgPos = RenderGUI(*model);
+        ImVec2 imgPos = RenderGUI();
         ImGui::Render();
         
         BindFramebuffer();
@@ -109,6 +111,7 @@ void Engine::Start()
         bool insideImage = (localX >= 0 && localX <= EditorWindowWidth && localY >= 0 && localY <= EditorWindowHeight);
         
         targetpos.y = model->aabbMax.y/2.0f;
+        // targetpos.y = 0;
 
         cam.Update(dt);
         glm::mat4 View = cam.view();
@@ -234,7 +237,7 @@ void Engine::UnbindFramebuffer()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-ImVec2 Engine::RenderGUI(Model& model)
+ImVec2 Engine::RenderGUI()
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(ScreenWidth*0.8f, ScreenHeight), ImGuiCond_Always);
@@ -282,12 +285,12 @@ ImVec2 Engine::RenderGUI(Model& model)
     ImGui::Text("Pitch: %.1f", cam.pitch);
     ImGui::Text("Distance: %.1f", cam.distance);
     ImGui::Text("Target Position: %.1f, %.1f, %.1f", targetpos.x,targetpos.y,targetpos.z);
-    ImGui::Text("AABB MAX-y: %.5f", model.aabbMax.y);
-    ImGui::Text("AABB MIN-y: %.5f", model.aabbMin.y);
+    ImGui::Text("AABB MAX-y: %.5f", model->aabbMax.y);
+    ImGui::Text("AABB MIN-y: %.5f", model->aabbMin.y);
     
     
     ImGui::SeparatorText("Model");
-    ImGui::DragFloat3("Scale", &model.Scale.x, 1.0f, 0.01, 10.0f, "%.2f");
+    ImGui::DragFloat3("Scale", &model->Scale.x, 1.0f, 0.01, 10.0f, "%.2f");
     ImGui::SeparatorText("Light");
     ImGui::SliderAngle("Orbit", &lightYaw, 0.0f, 360.0f, "%.0f°");
     ImGui::SliderFloat("Height", &lightHeight, 0.00, 25.0f, "%.2f");
@@ -308,8 +311,217 @@ ImVec2 Engine::RenderGUI(Model& model)
         LoadNewModel(path, flipTexture);   // <-- replace with your own function
         // or just store it: model.currentFilepath = path;
     }
+
+
+    ImGui::SeparatorText("Model IO");
+    if (ImGui::Button("Save Model"))
+    {
+        if(model)
+        {
+            SaveModelBinary(*model,"SavedModel.modl");
+        }
+    }
+
+    static char binaryFilepath[256] = ""; // buffer for input
+    ImGui::InputText("Binary Filepath", binaryFilepath, IM_ARRAYSIZE(filepath));
+    if (ImGui::Button("Load Binary Model"))
+    {
+        Model* binaryModel = LoadModelBinary(binaryFilepath);
+
+        if (&model)
+        {
+            delete model;   // calls Model::~Model(), freeing textures/meshes
+            model = nullptr;
+        }
+
+     // Allocate new model
+        model = binaryModel;
+    }
+    
     
     ImGui::End();
 
     return imgPos;
+}
+
+// void Engine::SaveModelBinary(const Model& model, const std::string& path)
+// {
+//     std::ofstream out(path, std::ios::binary);
+//     if (!out.is_open()) return;
+
+//     ModelHeader header;
+//     header.numMeshes = model.meshes.size();
+//     header.hasDiffuse = model.hasDiffuse;
+//     header.hasSpecular = model.hasSpecular;
+//     header.hasNormal = model.hasNormal;
+//     out.write(reinterpret_cast<char*>(&header), sizeof(header));
+
+//     for (const auto& mesh : model.meshes) {
+//         MeshHeader meshHeader;
+//         meshHeader.numVertices = mesh.vertices.size();
+//         meshHeader.numIndices = mesh.indices.size();
+//         meshHeader.numTextures = mesh.textures.size();
+//         meshHeader.aabbMin = mesh.aabbMin;
+//         meshHeader.aabbMax = mesh.aabbMax;
+
+//         out.write(reinterpret_cast<char*>(&meshHeader), sizeof(meshHeader));
+
+//         // Write vertices
+//         for (const auto& v : mesh.vertices) {
+//             VertexBinary vb;
+//             vb.position = v.Position;
+//             vb.normal = v.Normal;
+//             vb.texCoords = v.TexCoords;
+//             vb.tangent = v.Tangent;
+//             vb.bitangent = v.Bitangent;
+//             out.write(reinterpret_cast<char*>(&vb), sizeof(vb));
+//         }
+
+//         // Write indices
+//         out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(uint32_t));
+        
+//         // model.directory
+//         // For simplicity, we can save texture paths as fixed-length strings (e.g., 256 chars)
+//         for (const auto& tex : mesh.textures) {
+            
+//             char buffer[256] = {};
+//             std::string fullPath = model.directory + "/" + tex.path; 
+//             strncpy(buffer, fullPath.c_str(), 255);
+//             // strncpy(buffer, tex.path.c_str(), 255);
+//             out.write(buffer, 256);
+//         }
+//     }
+
+//     out.close();
+// }
+
+void Engine::SaveModelBinary(const Model& model, const std::string& path)
+{
+    std::ofstream out(path, std::ios::binary);
+    if (!out.is_open()) return;
+
+    // Write model header
+    ModelHeader header;
+    header.numMeshes = model.meshes.size();
+    header.hasDiffuse = model.hasDiffuse;
+    header.hasSpecular = model.hasSpecular;
+    header.hasNormal = model.hasNormal;
+    out.write(reinterpret_cast<char*>(&header), sizeof(header));
+
+    for (const auto& mesh : model.meshes) {
+        // Write mesh header
+        MeshHeader meshHeader;
+        meshHeader.numVertices = mesh.vertices.size();
+        meshHeader.numIndices = mesh.indices.size();
+        meshHeader.numTextures = mesh.textures.size();
+        meshHeader.aabbMin = mesh.aabbMin;
+        meshHeader.aabbMax = mesh.aabbMax;
+        out.write(reinterpret_cast<char*>(&meshHeader), sizeof(meshHeader));
+
+        // Write vertices (field by field to avoid padding issues)
+        for (const auto& v : mesh.vertices) {
+            out.write(reinterpret_cast<const char*>(&v.Position), sizeof(glm::vec3));
+            out.write(reinterpret_cast<const char*>(&v.Normal), sizeof(glm::vec3));
+            out.write(reinterpret_cast<const char*>(&v.TexCoords), sizeof(glm::vec2));
+            out.write(reinterpret_cast<const char*>(&v.Tangent), sizeof(glm::vec3));
+            out.write(reinterpret_cast<const char*>(&v.Bitangent), sizeof(glm::vec3));
+        }
+
+        // Write indices
+        out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(uint32_t));
+
+        // // Write texture paths (relative only)
+        // for (const auto& tex : mesh.textures) {
+        //     char buffer[256] = {};
+        //     strncpy(buffer, tex.path.c_str(), 255); // relative path only
+        //     out.write(buffer, 256);
+        // }
+        for (const auto& tex : mesh.textures) {    
+            char buffer[256] = {};
+            std::string fullPath = model.directory + "/" + tex.path; 
+            strncpy(buffer, fullPath.c_str(), 255);
+            // strncpy(buffer, tex.path.c_str(), 255);
+            out.write(buffer, 256);
+        }
+    }
+
+    out.close();
+}
+
+
+
+Model* Engine::LoadModelBinary(const std::string& path)
+{
+    std::ifstream in(path, std::ios::binary);
+    // if (!in.is_open()) return &Model();
+    if (!in.is_open()) return nullptr;
+
+    Model* model = new Model();
+
+    ModelHeader header;
+    in.read(reinterpret_cast<char*>(&header), sizeof(header));
+    model->hasDiffuse = header.hasDiffuse;
+    model->hasSpecular = header.hasSpecular;
+    model->hasNormal = header.hasNormal;
+
+    for (uint32_t i = 0; i < header.numMeshes; i++) {
+        MeshHeader meshHeader;
+        in.read(reinterpret_cast<char*>(&meshHeader), sizeof(meshHeader));
+
+        std::vector<Vertex> vertices(meshHeader.numVertices);
+        std::vector<uint32_t> indices(meshHeader.numIndices);
+        std::vector<Texture> textures(meshHeader.numTextures);
+
+        for (uint32_t j = 0; j < meshHeader.numVertices; j++) {
+            VertexBinary vb;
+            in.read(reinterpret_cast<char*>(&vb), sizeof(vb));
+            vertices[j].Position = vb.position;
+            vertices[j].Normal = vb.normal;
+            vertices[j].TexCoords = vb.texCoords;
+            vertices[j].Tangent = vb.tangent;
+            vertices[j].Bitangent = vb.bitangent;
+        }
+
+        in.read(reinterpret_cast<char*>(indices.data()), meshHeader.numIndices * sizeof(uint32_t));
+
+        for (uint32_t j = 0; j < meshHeader.numTextures; j++) {
+            char buffer[256] = {};
+            in.read(buffer, 256);
+            Texture tex;
+            tex.path = buffer;
+            tex.id = 0; // load texture later with OpenGL
+            textures[j] = tex;
+        }
+
+        Mesh mesh(vertices, indices, textures);
+        mesh.aabbMin = meshHeader.aabbMin;
+        mesh.aabbMax = meshHeader.aabbMax;
+        model->meshes.push_back(mesh);
+    }
+
+
+    for (auto& mesh : model->meshes) {
+    for (auto& tex : mesh.textures) {
+        if (tex.path.size() > 0 && tex.id == 0) {
+            tex.id = model->TextureFromFile(tex.path.c_str(), model->directory,false,true);
+            model->textures_loaded.push_back(tex);
+        }
+        }
+    }
+
+    for (auto& mesh : model->meshes){
+        glm::vec3 minPoint(FLT_MAX);
+        glm::vec3 maxPoint(-FLT_MAX);
+        for(auto& vertex : mesh.vertices){
+            minPoint = glm::min(minPoint, vertex.Position);
+            maxPoint = glm::max(maxPoint, vertex.Position);
+
+            model->aabbMin =  glm::min(minPoint, model->aabbMin);
+            model->aabbMax =  glm::max(maxPoint, model->aabbMax);         
+            model->localAabbMin =  glm::min(minPoint, model->aabbMin);
+            model->localAabbMax =  glm::max(maxPoint, model->aabbMax);  
+        }
+    }
+
+    return model;
 }
