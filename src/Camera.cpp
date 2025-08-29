@@ -45,10 +45,13 @@ void Camera::HandleInput(SDL_Event e, int mx, int my)
 
 }
 
-void Camera::Zoom(SDL_Event e)
+void Camera::Zoom(SDL_Event e, float zoomAmmount)
 {
-    if (e.wheel.y > 0) distance = glm::max(minDistance, distance - 1.0f);
-    if (e.wheel.y < 0) distance = glm::min(maxDistance, distance + 1.0f);
+    // if (e.wheel.y > 0) distance = glm::max(minDistance, distance - 1.0f);
+    // if (e.wheel.y < 0) distance = glm::min(maxDistance, distance + 1.0f);
+    if (e.wheel.y > 0) distance = glm::max(minDistance, distance - zoomAmmount);
+    if (e.wheel.y < 0) distance = glm::min(maxDistance, distance + zoomAmmount);
+
 }
 void Camera::Update(float dt)
 {

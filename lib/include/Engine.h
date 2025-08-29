@@ -59,6 +59,12 @@ class Engine {
 
         Model *model;
 
+
+        glm::vec3 lightPosition = glm::vec3(0.0f,0.0f,0.0f);
+        float lightOrbitRadius = 10;
+        float lightYaw = 0;
+        float lightHeight = 25;
+
         std::vector<glm::vec3> ringVerts;
 
         glm::vec3 targetpos = glm::vec3(0.0f);

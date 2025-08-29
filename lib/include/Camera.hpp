@@ -17,7 +17,8 @@ class Camera
         glm::vec3 position() const;
         void recalculateViewport(SDL_Event e);
         void HandleInput(SDL_Event e, int mx, int my);
-        void Zoom(SDL_Event e);
+        void Zoom(SDL_Event e, float zoomAmmount=1.0f);
+        
         void Update(float dt);
         // glm::vec3 positionWithCollision(TerrainMap* terrain) const;
         // glm::mat4 view(TerrainMap* terrain) const;

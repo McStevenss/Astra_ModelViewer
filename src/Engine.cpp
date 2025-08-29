@@ -1,22 +1,16 @@
 #include "Engine.h"
 
+# define M_PI           3.14159265358979323846  /* pi */
 Engine::Engine()
 {
-    cam = Camera(60.0f,0.1f,1000.0f);
-    // cam.yaw = 4.7f;
+    // cam = Camera(60.0f,0.1f,1000.0f);
+    cam = Camera(60.0f,0.1f,500.0f);
     cam.yaw = 1.6f;
     cam.pitch = 0.4f;
     cam.targetPos = &targetpos;
 
     Initialize();
 
-
-    // model = Model("models/UE_Hero_Male/Superhero_Male.gltf");
-    // model = std::make_unique<Model>("models/UE_Hero_Male/Superhero_Male.gltf");
-    // model = std::make_unique<Model>("models/backpack/backpack.obj",false,true);
-    // model = std::make_unique<Model>("models/backpack/backpack.obj",false,false);
-
-    
     CreateFrameBuffer();
 }
 
@@ -40,8 +34,12 @@ void Engine::Initialize()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-    // Setup Dear ImGui style
+    // ImGui style
+
+    //DarkMode
     ImGui::StyleColorsDark();
+    //LightMode
+    // ImGui::StyleColorsLight();
 
      // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(win, glctx);
@@ -79,35 +77,26 @@ void Engine::LoadNewModel(string const &path, bool flipUvs)
 void Engine::Start()
 {
     uint32_t prevTicks = SDL_GetTicks();
-    // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
     stbi_set_flip_vertically_on_load(false);
-    // stbi_set_flip_vertically_on_load(false);
-    std::cout << "Engine starting" << std::endl;
     
     const int   GRID_SIZE   = 256;          // 128x128 height samples
     const float TILE_SIZE   = 533.333f;     // WoW ADT ~533.333m, optional
     const float CELL_SIZE   = TILE_SIZE / (GRID_SIZE - 1);
     
     Grid grid(20, CELL_SIZE); // 20x20 grid, spacing = 1.0
-    std::cout << "Grid cellsize: " << CELL_SIZE << std::endl;
 
     Shader gridShader("shaders/grid.vs","shaders/grid.fs"); 
     Shader modelShader("shaders/model.vs","shaders/model.fs");
 
-    // Model model("models/UE_Hero_Male/Superhero_Male.gltf",false,false);
-
-    // Model model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
     model = new Model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
 
     while(running)
     {
         float dt = GetDeltaTime();
-        
-
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        ImVec2 imgPos = RenderGUI(*model); // now it returns the top-left of the image inside window
+        ImVec2 imgPos = RenderGUI(*model);
         ImGui::Render();
         
         BindFramebuffer();
@@ -117,58 +106,45 @@ void Engine::Start()
         
         float localX = mx - imgPos.x;
         float localY = my - imgPos.y;
-
-        bool insideImage = (localX >= 0 && localX <= EditorWindowWidth &&
-                            localY >= 0 && localY <= EditorWindowHeight);
+        bool insideImage = (localX >= 0 && localX <= EditorWindowWidth && localY >= 0 && localY <= EditorWindowHeight);
         
-
-
-
         targetpos.y = model->aabbMax.y/2.0f;
-
 
         cam.Update(dt);
         glm::mat4 View = cam.view();
         glm::mat4 Projection = cam.proj(EditorWindowWidth/(float)EditorWindowHeight);
         glm::mat4 VP = Projection*View; 
-        glm::mat4 invVP = glm::inverse(VP);
-        glm::vec3 hit;
 
-        // if(insideImage){
-            
-        // }
-  
         // --- Render ---
         glClearColor(0.32f,0.55f,0.75f,1);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        // In render loop
+
         gridShader.use();
-        gridShader.setMat4("uVP", VP); // your camera VP matrix
+        gridShader.setMat4("uVP", VP);
         grid.Render(gridShader);
 
+        lightPosition.x = targetpos.x + lightOrbitRadius * cosf(lightYaw);
+        lightPosition.z = targetpos.z + lightOrbitRadius * sinf(lightYaw);
+        lightPosition.y = lightHeight;
         
         model->UpdateModelMatrix();
-
         modelShader.use();
-        modelShader.setMat4("view",View);
-        modelShader.setMat4("projection",Projection);
-        modelShader.setMat4("model",model->ModelMatrix);
-        modelShader.setVec3("viewPos",cam.position());
-        modelShader.setVec3("lightPos",glm::vec3(10.0f));
+            modelShader.setMat4("view",View);
+            modelShader.setMat4("projection",Projection);
+            modelShader.setMat4("model",model->ModelMatrix);
+            modelShader.setVec3("viewPos",cam.position());
+            modelShader.setVec3("lightPos",lightPosition);
         
         model->Draw(modelShader);
 
         HandleInput(dt);
 
         UnbindFramebuffer();
-
-          // Render ImGui
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
         SDL_GL_SwapWindow(win);
     }
 
-    // model.reset();
+    delete model;
     SDL_GL_DeleteContext(glctx);
     SDL_DestroyWindow(win);
 
@@ -192,7 +168,7 @@ void Engine::HandleInput(float dt)
         }     
         if(e.type==SDL_MOUSEWHEEL)
         {
-            cam.Zoom(e);
+            cam.Zoom(e,0.2f);
         }
         cam.HandleInput(e,mx,my);
 
@@ -312,6 +288,9 @@ ImVec2 Engine::RenderGUI(Model& model)
     
     ImGui::SeparatorText("Model");
     ImGui::DragFloat3("Scale", &model.Scale.x, 1.0f, 0.01, 10.0f, "%.2f");
+    ImGui::SeparatorText("Light");
+    ImGui::SliderAngle("Orbit", &lightYaw, 0.0f, 360.0f, "%.0f°");
+    ImGui::SliderFloat("Height", &lightHeight, 0.00, 25.0f, "%.2f");
 
     static char filepath[256] = ""; // buffer for input
 

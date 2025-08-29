@@ -34,7 +34,6 @@ Grid::Grid(int size, float spacing)
     }
 
     indexCount = (GLsizei)indices.size();
-    std::cout << "Grid index count: " << indexCount << std::endl;
 
     // Setup OpenGL buffers
     glGenVertexArrays(1, &vao);
