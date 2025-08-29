@@ -57,7 +57,7 @@ class Engine {
 
         // std::unique_ptr<Model> model;  // starts as nullptr
 
-        // Model model;
+        Model *model;
 
         std::vector<glm::vec3> ringVerts;
 

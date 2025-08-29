@@ -64,25 +64,15 @@ float Engine::GetDeltaTime()
 
 void Engine::LoadNewModel(string const &path, bool flipUvs)
 {
-    if(path == "") return;
-    
-    std::string copyPath = path;          // create a modifiable copy
-    std::replace(copyPath.begin(), copyPath.end(), '\\', '/');
-    
-    // model = Model(copyPath,false,flipUvs);
-    // // model = std::make_unique<Model>(copyPath, false, flipUvs);
-    // // // model->UpdateModelMatrix();
-    // // auto newModel = std::make_unique<Model>(copyPath, false, flipUvs);
-    
-    // // newModel->UpdateModelMatrix();
-    // // model = std::move(newModel);
-    
-    // // Create a temporary model first
-    // // model = std::make_unique<Model>(copyPath, false, flipUVs);
+    // Clean up the old model if it exists
+    if (model)
+    {
+        delete model;   // calls Model::~Model(), freeing textures/meshes
+        model = nullptr;
+    }
 
-    // // Initialize its transform
-
-
+     // Allocate new model
+    model = new Model(path, false, flipUvs);
 
 }
 
@@ -106,7 +96,8 @@ void Engine::Start()
 
     // Model model("models/UE_Hero_Male/Superhero_Male.gltf",false,false);
 
-    Model model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
+    // Model model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
+    model = new Model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
 
     while(running)
     {
@@ -116,7 +107,7 @@ void Engine::Start()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        ImVec2 imgPos = RenderGUI(model); // now it returns the top-left of the image inside window
+        ImVec2 imgPos = RenderGUI(*model); // now it returns the top-left of the image inside window
         ImGui::Render();
         
         BindFramebuffer();
@@ -133,7 +124,7 @@ void Engine::Start()
 
 
 
-        targetpos.y = model.aabbMax.y/2.0f;
+        targetpos.y = model->aabbMax.y/2.0f;
 
 
         cam.Update(dt);
@@ -156,16 +147,16 @@ void Engine::Start()
         grid.Render(gridShader);
 
         
-        model.UpdateModelMatrix();
+        model->UpdateModelMatrix();
 
         modelShader.use();
         modelShader.setMat4("view",View);
         modelShader.setMat4("projection",Projection);
-        modelShader.setMat4("model",model.ModelMatrix);
+        modelShader.setMat4("model",model->ModelMatrix);
         modelShader.setVec3("viewPos",cam.position());
         modelShader.setVec3("lightPos",glm::vec3(10.0f));
         
-        model.Draw(modelShader);
+        model->Draw(modelShader);
 
         HandleInput(dt);
 

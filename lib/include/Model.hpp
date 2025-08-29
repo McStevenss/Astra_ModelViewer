@@ -1,5 +1,5 @@
-#ifndef MODEL_ORIGINAL_HPP
-#define MODEL_ORIGINAL_HPP
+#ifndef MODEL_HPP
+#define MODEL_HPP
 
 #include <glad/glad.h> 
 
@@ -46,10 +46,29 @@ public:
     glm::vec3 localAabbMin = glm::vec3(FLT_MAX);
     glm::vec3 localAabbMax = glm::vec3(-FLT_MAX);
 
+    Model() = default;
+
     // constructor, expects a filepath to a 3D model.
     Model(string const &path, bool gamma = false, bool flipUVs = false) : gammaCorrection(gamma)
     {
         loadModel(path,flipUVs);
+    }
+
+    ~Model()
+    {
+        // Free textures
+        for (auto& tex : textures_loaded)
+        {
+            if (glIsTexture(tex.id)) // make sure it’s a valid texture ID
+                glDeleteTextures(1, &tex.id);
+        }
+
+        for (auto& mesh : meshes){
+            mesh.Delete();
+        }
+
+        // Mesh cleanup happens automatically if Mesh has its own destructor
+        // (RAII principle: each class frees what it owns).
     }
 
 
