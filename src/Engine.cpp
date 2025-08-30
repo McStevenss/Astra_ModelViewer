@@ -344,57 +344,6 @@ ImVec2 Engine::RenderGUI()
     return imgPos;
 }
 
-// void Engine::SaveModelBinary(const Model& model, const std::string& path)
-// {
-//     std::ofstream out(path, std::ios::binary);
-//     if (!out.is_open()) return;
-
-//     ModelHeader header;
-//     header.numMeshes = model.meshes.size();
-//     header.hasDiffuse = model.hasDiffuse;
-//     header.hasSpecular = model.hasSpecular;
-//     header.hasNormal = model.hasNormal;
-//     out.write(reinterpret_cast<char*>(&header), sizeof(header));
-
-//     for (const auto& mesh : model.meshes) {
-//         MeshHeader meshHeader;
-//         meshHeader.numVertices = mesh.vertices.size();
-//         meshHeader.numIndices = mesh.indices.size();
-//         meshHeader.numTextures = mesh.textures.size();
-//         meshHeader.aabbMin = mesh.aabbMin;
-//         meshHeader.aabbMax = mesh.aabbMax;
-
-//         out.write(reinterpret_cast<char*>(&meshHeader), sizeof(meshHeader));
-
-//         // Write vertices
-//         for (const auto& v : mesh.vertices) {
-//             VertexBinary vb;
-//             vb.position = v.Position;
-//             vb.normal = v.Normal;
-//             vb.texCoords = v.TexCoords;
-//             vb.tangent = v.Tangent;
-//             vb.bitangent = v.Bitangent;
-//             out.write(reinterpret_cast<char*>(&vb), sizeof(vb));
-//         }
-
-//         // Write indices
-//         out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(uint32_t));
-        
-//         // model.directory
-//         // For simplicity, we can save texture paths as fixed-length strings (e.g., 256 chars)
-//         for (const auto& tex : mesh.textures) {
-            
-//             char buffer[256] = {};
-//             std::string fullPath = model.directory + "/" + tex.path; 
-//             strncpy(buffer, fullPath.c_str(), 255);
-//             // strncpy(buffer, tex.path.c_str(), 255);
-//             out.write(buffer, 256);
-//         }
-//     }
-
-//     out.close();
-// }
-
 void Engine::SaveModelBinary(const Model& model, const std::string& path)
 {
     std::ofstream out(path, std::ios::binary);
@@ -430,18 +379,24 @@ void Engine::SaveModelBinary(const Model& model, const std::string& path)
         // Write indices
         out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(uint32_t));
 
-        // // Write texture paths (relative only)
-        // for (const auto& tex : mesh.textures) {
+        // for (const auto& tex : mesh.textures) {    
         //     char buffer[256] = {};
-        //     strncpy(buffer, tex.path.c_str(), 255); // relative path only
+        //     std::string fullPath = model.directory + "/" + tex.path; 
+        //     strncpy(buffer, fullPath.c_str(), 255);
         //     out.write(buffer, 256);
         // }
+
         for (const auto& tex : mesh.textures) {    
-            char buffer[256] = {};
+            // Write texture type (fixed-size buffer, 64 bytes should be enough)
+            char typeBuffer[64] = {};
+            strncpy(typeBuffer, tex.type.c_str(), sizeof(typeBuffer) - 1);
+            out.write(typeBuffer, sizeof(typeBuffer));
+
+            // Write texture path (fixed-size buffer, 256 bytes)
+            char pathBuffer[256] = {};
             std::string fullPath = model.directory + "/" + tex.path; 
-            strncpy(buffer, fullPath.c_str(), 255);
-            // strncpy(buffer, tex.path.c_str(), 255);
-            out.write(buffer, 256);
+            strncpy(pathBuffer, fullPath.c_str(), sizeof(pathBuffer) - 1);
+            out.write(pathBuffer, sizeof(pathBuffer));
         }
     }
 
@@ -449,11 +404,9 @@ void Engine::SaveModelBinary(const Model& model, const std::string& path)
 }
 
 
-
 Model* Engine::LoadModelBinary(const std::string& path)
 {
     std::ifstream in(path, std::ios::binary);
-    // if (!in.is_open()) return &Model();
     if (!in.is_open()) return nullptr;
 
     Model* model = new Model();
@@ -472,23 +425,33 @@ Model* Engine::LoadModelBinary(const std::string& path)
         std::vector<uint32_t> indices(meshHeader.numIndices);
         std::vector<Texture> textures(meshHeader.numTextures);
 
+        // --- Read vertices ---
         for (uint32_t j = 0; j < meshHeader.numVertices; j++) {
             VertexBinary vb;
             in.read(reinterpret_cast<char*>(&vb), sizeof(vb));
-            vertices[j].Position = vb.position;
-            vertices[j].Normal = vb.normal;
+            vertices[j].Position  = vb.position;
+            vertices[j].Normal    = vb.normal;
             vertices[j].TexCoords = vb.texCoords;
-            vertices[j].Tangent = vb.tangent;
+            vertices[j].Tangent   = vb.tangent;
             vertices[j].Bitangent = vb.bitangent;
         }
 
+        // --- Read indices ---
         in.read(reinterpret_cast<char*>(indices.data()), meshHeader.numIndices * sizeof(uint32_t));
 
+        // --- Read textures (type + path) ---
         for (uint32_t j = 0; j < meshHeader.numTextures; j++) {
-            char buffer[256] = {};
-            in.read(buffer, 256);
+            // type (64 bytes)
+            char typeBuffer[64] = {};
+            in.read(typeBuffer, sizeof(typeBuffer));
+
+            // path (256 bytes)
+            char pathBuffer[256] = {};
+            in.read(pathBuffer, sizeof(pathBuffer));
+
             Texture tex;
-            tex.path = buffer;
+            tex.type = typeBuffer;
+            tex.path = pathBuffer;
             tex.id = 0; // load texture later with OpenGL
             textures[j] = tex;
         }
@@ -499,28 +462,25 @@ Model* Engine::LoadModelBinary(const std::string& path)
         model->meshes.push_back(mesh);
     }
 
-
+    // Load textures into OpenGL
     for (auto& mesh : model->meshes) {
-    for (auto& tex : mesh.textures) {
-        if (tex.path.size() > 0 && tex.id == 0) {
-            tex.id = model->TextureFromFile(tex.path.c_str(), model->directory,false,true);
-            model->textures_loaded.push_back(tex);
-        }
+        for (auto& tex : mesh.textures) {
+            if (!tex.path.empty() && tex.id == 0) {
+                tex.id = model->TextureFromFile(tex.path.c_str(), model->directory, false, true);
+                model->textures_loaded.push_back(tex);
+            }
         }
     }
 
+    // Compute bounding box
     for (auto& mesh : model->meshes){
         glm::vec3 minPoint(FLT_MAX);
         glm::vec3 maxPoint(-FLT_MAX);
-        for(auto& vertex : mesh.vertices){
-            minPoint = glm::min(minPoint, vertex.Position);
-            maxPoint = glm::max(maxPoint, vertex.Position);
 
-            model->aabbMin =  glm::min(minPoint, model->aabbMin);
-            model->aabbMax =  glm::max(maxPoint, model->aabbMax);         
-            model->localAabbMin =  glm::min(minPoint, model->aabbMin);
-            model->localAabbMax =  glm::max(maxPoint, model->aabbMax);  
-        }
+        model->aabbMin      = glm::min(minPoint, mesh.aabbMin);
+        model->aabbMax      = glm::max(maxPoint, mesh.aabbMax);
+        model->localAabbMin = glm::min(minPoint, model->aabbMin);
+        model->localAabbMax = glm::max(maxPoint, model->aabbMax);
     }
 
     return model;
