@@ -238,12 +238,7 @@ ImVec2 Engine::RenderGUI()
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(ScreenWidth*0.8f, ScreenHeight), ImGuiCond_Always);
-    ImGui::Begin("Editor",
-                 nullptr,
-                 ImGuiWindowFlags_NoMove |
-                 ImGuiWindowFlags_NoResize |
-                 ImGuiWindowFlags_NoCollapse |
-                 ImGuiWindowFlags_NoTitleBar);
+    ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
     EditorWindowWidth = ImGui::GetContentRegionAvail().x;
     EditorWindowHeight = ImGui::GetContentRegionAvail().y;
@@ -269,15 +264,10 @@ ImVec2 Engine::RenderGUI()
 
     ImGui::End();
 
-
-        // --- Settings Window (20%) ---
+    // --- Settings Window (20%) ---
     ImGui::SetNextWindowPos(ImVec2(ScreenWidth * 0.8f, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(ScreenWidth * 0.2f, ScreenHeight), ImGuiCond_Always);
-    ImGui::Begin("Settings",
-                 nullptr,
-                 ImGuiWindowFlags_NoMove |
-                 ImGuiWindowFlags_NoResize |
-                 ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
     //--------------------------------------------------------------------
     ImGui::SeparatorText("Camera");
@@ -309,8 +299,7 @@ ImVec2 Engine::RenderGUI()
     ImGui::SeparatorText("Model IO");
     if (ImGui::Button("Save Model"))
     {
-        if(model)
-        {
+        if(model){
             SaveModelBinary(*model,"SavedModel.modl");
         }
     }

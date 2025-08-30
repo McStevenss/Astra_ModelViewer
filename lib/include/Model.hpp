@@ -308,8 +308,6 @@ private:
         vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
         // 3. normal maps
-        // std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
-        // std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
         std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
         if (normalMaps.size() == 0){
              normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
@@ -324,17 +322,12 @@ private:
         if (diffuseMaps.size() > 0) hasDiffuse = true;
         if (normalMaps.size() > 0) hasNormal = true;
         if (specularMaps.size() > 0) hasSpecular = true;
-        // std::cout << "Diffusemaps: " << diffuseMaps.size()   <<"\n"<< std::endl;
-        // std::cout << "specularMaps: " << specularMaps.size() <<"\n"<< std::endl;
-        // std::cout << "normalMaps: " << normalMaps.size()     <<"\n"<< std::endl;
-        // return a mesh object created from the extracted mesh data
 
         Mesh processedMesh = Mesh(vertices, indices, textures);
         processedMesh.aabbMax = maxPoint;
         processedMesh.aabbMin = minPoint;
 
         return processedMesh;
-        // return Mesh(vertices, indices, textures);
     }
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
