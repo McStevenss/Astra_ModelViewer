@@ -1,9 +1,8 @@
 #include "Engine.h"
+# define M_PI  3.14159265358979323846  /* pi */
 
-# define M_PI           3.14159265358979323846  /* pi */
 Engine::Engine()
 {
-    // cam = Camera(60.0f,0.1f,1000.0f);
     cam = Camera(60.0f,0.1f,500.0f);
     cam.yaw = 1.6f;
     cam.pitch = 0.4f;
@@ -177,8 +176,6 @@ void Engine::HandleInput(float dt)
 
         if(rmb){
             SDL_SetRelativeMouseMode(SDL_TRUE);
-            // SDL_WarpMouseInWindow(win, ScreenWidth/2,ScreenHeight/2);
-            // SDL_WarpMouseInWindow(win, ScreenWidth/2,ScreenHeight/2);
         }
         if(!rmb){
             SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -251,6 +248,9 @@ ImVec2 Engine::RenderGUI()
     EditorWindowWidth = ImGui::GetContentRegionAvail().x;
     EditorWindowHeight = ImGui::GetContentRegionAvail().y;
 
+    static char filepath[256] = ""; // buffer for obj,gltf, etc for loading
+    static char binaryFilepath[256] = ""; // buffer for binary model loading
+
     // rescale framebuffer
     RescaleFramebuffer(EditorWindowWidth, EditorWindowHeight);
     glViewport(0, 0, EditorWindowWidth, EditorWindowHeight);
@@ -285,8 +285,6 @@ ImVec2 Engine::RenderGUI()
     ImGui::Text("Pitch: %.1f", cam.pitch);
     ImGui::Text("Distance: %.1f", cam.distance);
     ImGui::Text("Target Position: %.1f, %.1f, %.1f", targetpos.x,targetpos.y,targetpos.z);
-    ImGui::Text("AABB MAX-y: %.5f", model->aabbMax.y);
-    ImGui::Text("AABB MIN-y: %.5f", model->aabbMin.y);
     
     
     ImGui::SeparatorText("Model");
@@ -294,22 +292,17 @@ ImVec2 Engine::RenderGUI()
     ImGui::SeparatorText("Light");
     ImGui::SliderAngle("Orbit", &lightYaw, 0.0f, 360.0f, "%.0f°");
     ImGui::SliderFloat("Height", &lightHeight, 0.00, 25.0f, "%.2f");
+    ImGui::Text("AABB MAX-y: %.5f", model->aabbMax.y);
+    ImGui::Text("AABB MIN-y: %.5f", model->aabbMin.y);
 
-    static char filepath[256] = ""; // buffer for input
-
+    
     ImGui::SeparatorText("Model Loader");
-
-    // Input field for file path
-    ImGui::InputText("Filepath", filepath, IM_ARRAYSIZE(filepath));
-     
+    ImGui::InputText("Filepath", filepath, IM_ARRAYSIZE(filepath));     
     ImGui::Checkbox("Flip texture: ", &flipTexture);
-    // Submit button
     if (ImGui::Button("Load Model"))
     {
-        // Call your function with filepath
         std::string path(filepath);
-        LoadNewModel(path, flipTexture);   // <-- replace with your own function
-        // or just store it: model.currentFilepath = path;
+        LoadNewModel(path, flipTexture);
     }
 
 
@@ -322,27 +315,24 @@ ImVec2 Engine::RenderGUI()
         }
     }
 
-    static char binaryFilepath[256] = ""; // buffer for input
+
     ImGui::InputText("Binary Filepath", binaryFilepath, IM_ARRAYSIZE(filepath));
     if (ImGui::Button("Load Binary Model") && binaryFilepath[0] != '\0')
     {
         std::cout << "Loading binary model from: '" << binaryFilepath<< "'" << std::endl;
         Model* binaryModel = LoadModelBinary(binaryFilepath);
         
-        if (&model && binaryModel)
-        {
+        if (&model && binaryModel){
             delete model;   // calls Model::~Model(), freeing textures/meshes
             model = nullptr;
         }
 
-        if(binaryModel)
-        {
+        if(binaryModel){
             model = binaryModel;
         }
     }
     
-    if(binaryFilepath[0] == '\0')
-    {
+    if(binaryFilepath[0] == '\0'){
         ImGui::Text("PATH IS EMPTY");
     }
     
@@ -385,13 +375,6 @@ void Engine::SaveModelBinary(const Model& model, const std::string& path)
 
         // Write indices
         out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(uint32_t));
-
-        // for (const auto& tex : mesh.textures) {    
-        //     char buffer[256] = {};
-        //     std::string fullPath = model.directory + "/" + tex.path; 
-        //     strncpy(buffer, fullPath.c_str(), 255);
-        //     out.write(buffer, 256);
-        // }
 
         for (const auto& tex : mesh.textures) {    
             // Write texture type (fixed-size buffer, 64 bytes should be enough)
