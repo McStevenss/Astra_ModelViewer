@@ -290,7 +290,7 @@ ImVec2 Engine::RenderGUI()
     
     
     ImGui::SeparatorText("Model");
-    ImGui::DragFloat3("Scale", &model->Scale.x, 1.0f, 0.01, 10.0f, "%.2f");
+    ImGui::DragFloat3("Scale", &model->Scale.x, 0.1f, 0.01, 10.0f, "%.2f");
     ImGui::SeparatorText("Light");
     ImGui::SliderAngle("Orbit", &lightYaw, 0.0f, 360.0f, "%.0f°");
     ImGui::SliderFloat("Height", &lightHeight, 0.00, 25.0f, "%.2f");
@@ -326,17 +326,19 @@ ImVec2 Engine::RenderGUI()
     ImGui::InputText("Binary Filepath", binaryFilepath, IM_ARRAYSIZE(filepath));
     if (ImGui::Button("Load Binary Model") && binaryFilepath[0] != '\0')
     {
-        std::cout << "Filepath is : '" << binaryFilepath<< "'" << std::endl;
+        std::cout << "Loading binary model from: '" << binaryFilepath<< "'" << std::endl;
         Model* binaryModel = LoadModelBinary(binaryFilepath);
-
-        if (&model)
+        
+        if (&model && binaryModel)
         {
             delete model;   // calls Model::~Model(), freeing textures/meshes
             model = nullptr;
         }
 
-     // Allocate new model
-        model = binaryModel;
+        if(binaryModel)
+        {
+            model = binaryModel;
+        }
     }
     
     if(binaryFilepath[0] == '\0')
