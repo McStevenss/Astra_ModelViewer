@@ -324,8 +324,9 @@ ImVec2 Engine::RenderGUI()
 
     static char binaryFilepath[256] = ""; // buffer for input
     ImGui::InputText("Binary Filepath", binaryFilepath, IM_ARRAYSIZE(filepath));
-    if (ImGui::Button("Load Binary Model"))
+    if (ImGui::Button("Load Binary Model") && binaryFilepath[0] != '\0')
     {
+        std::cout << "Filepath is : '" << binaryFilepath<< "'" << std::endl;
         Model* binaryModel = LoadModelBinary(binaryFilepath);
 
         if (&model)
@@ -338,6 +339,10 @@ ImVec2 Engine::RenderGUI()
         model = binaryModel;
     }
     
+    if(binaryFilepath[0] == '\0')
+    {
+        ImGui::Text("PATH IS EMPTY");
+    }
     
     ImGui::End();
 
@@ -403,7 +408,6 @@ void Engine::SaveModelBinary(const Model& model, const std::string& path)
     out.close();
 }
 
-
 Model* Engine::LoadModelBinary(const std::string& path)
 {
     std::ifstream in(path, std::ios::binary);
@@ -411,77 +415,80 @@ Model* Engine::LoadModelBinary(const std::string& path)
 
     Model* model = new Model();
 
+    // Read model header
     ModelHeader header;
     in.read(reinterpret_cast<char*>(&header), sizeof(header));
-    model->hasDiffuse = header.hasDiffuse;
+    if (!in) return nullptr;
+
+    model->hasDiffuse  = header.hasDiffuse;
     model->hasSpecular = header.hasSpecular;
-    model->hasNormal = header.hasNormal;
+    model->hasNormal   = header.hasNormal;
+
+
+    std::unordered_map<std::string, unsigned int> loadedTextures;
 
     for (uint32_t i = 0; i < header.numMeshes; i++) {
         MeshHeader meshHeader;
         in.read(reinterpret_cast<char*>(&meshHeader), sizeof(meshHeader));
 
-        std::vector<Vertex> vertices(meshHeader.numVertices);
+        // --- GPU-ready vertex buffer ---
+        std::vector<VertexBinary> vertexBuffer(meshHeader.numVertices);
+        in.read(reinterpret_cast<char*>(vertexBuffer.data()), meshHeader.numVertices * sizeof(VertexBinary));
+        
+        // --- Indices ---
         std::vector<uint32_t> indices(meshHeader.numIndices);
-        std::vector<Texture> textures(meshHeader.numTextures);
-
-        // --- Read vertices ---
-        for (uint32_t j = 0; j < meshHeader.numVertices; j++) {
-            VertexBinary vb;
-            in.read(reinterpret_cast<char*>(&vb), sizeof(vb));
-            vertices[j].Position  = vb.position;
-            vertices[j].Normal    = vb.normal;
-            vertices[j].TexCoords = vb.texCoords;
-            vertices[j].Tangent   = vb.tangent;
-            vertices[j].Bitangent = vb.bitangent;
-        }
-
-        // --- Read indices ---
         in.read(reinterpret_cast<char*>(indices.data()), meshHeader.numIndices * sizeof(uint32_t));
 
-        // --- Read textures (type + path) ---
+
+        // --- Textures ---
+        std::vector<Texture> textures(meshHeader.numTextures);
+        
         for (uint32_t j = 0; j < meshHeader.numTextures; j++) {
-            // type (64 bytes)
             char typeBuffer[64] = {};
             in.read(typeBuffer, sizeof(typeBuffer));
-
-            // path (256 bytes)
             char pathBuffer[256] = {};
             in.read(pathBuffer, sizeof(pathBuffer));
+            
+            textures[j].type = typeBuffer;
+            textures[j].path = pathBuffer;
 
-            Texture tex;
-            tex.type = typeBuffer;
-            tex.path = pathBuffer;
-            tex.id = 0; // load texture later with OpenGL
-            textures[j] = tex;
+            auto it = loadedTextures.find(textures[j].path);
+              if (it != loadedTextures.end()) {
+                textures[j].id = it->second; // reuse existing ID
+            } else {
+                textures[j].id = model->TextureFromFile(textures[j].path.c_str(), model->directory, false, true);
+                loadedTextures[textures[j].path] = textures[j].id; // store ID for reuse
+                model->textures_loaded.push_back(textures[j]);      // store in model's loaded textures
+            }
+
         }
 
-        Mesh mesh(vertices, indices, textures);
+        std::vector<Vertex> cpuVertices(meshHeader.numVertices);
+        for (uint32_t j = 0; j < meshHeader.numVertices; j++) {
+            cpuVertices[j].Position  = vertexBuffer[j].position;
+            cpuVertices[j].Normal    = vertexBuffer[j].normal;
+            cpuVertices[j].TexCoords = vertexBuffer[j].texCoords;
+            cpuVertices[j].Tangent   = vertexBuffer[j].tangent;
+            cpuVertices[j].Bitangent = vertexBuffer[j].bitangent;
+        }
+        // --- Create Mesh with GPU-ready data ---
+        Mesh mesh(cpuVertices, indices, textures);
+     
         mesh.aabbMin = meshHeader.aabbMin;
         mesh.aabbMax = meshHeader.aabbMax;
         model->meshes.push_back(mesh);
     }
 
-    // Load textures into OpenGL
+    // Compute model AABB
+    glm::vec3 minPoint(FLT_MAX), maxPoint(-FLT_MAX);
     for (auto& mesh : model->meshes) {
-        for (auto& tex : mesh.textures) {
-            if (!tex.path.empty() && tex.id == 0) {
-                tex.id = model->TextureFromFile(tex.path.c_str(), model->directory, false, true);
-                model->textures_loaded.push_back(tex);
-            }
-        }
+        minPoint = glm::min(minPoint, mesh.aabbMin);
+        maxPoint = glm::max(maxPoint, mesh.aabbMax);
     }
-
-    // Compute bounding box
-    for (auto& mesh : model->meshes){
-        glm::vec3 minPoint(FLT_MAX);
-        glm::vec3 maxPoint(-FLT_MAX);
-
-        model->aabbMin      = glm::min(minPoint, mesh.aabbMin);
-        model->aabbMax      = glm::max(maxPoint, mesh.aabbMax);
-        model->localAabbMin = glm::min(minPoint, model->aabbMin);
-        model->localAabbMax = glm::max(maxPoint, model->aabbMax);
-    }
+    model->aabbMin = minPoint;
+    model->aabbMax = maxPoint;
+    model->localAabbMin = minPoint;
+    model->localAabbMax = maxPoint;
 
     return model;
 }

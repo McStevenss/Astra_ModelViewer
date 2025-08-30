@@ -46,6 +46,10 @@
 
 // g++ src/*.cpp lib/build/win/*.o -I lib/include/ -Llib/build/win -o bin/Game.exe -lSDL2 -lopengl32 -lgdi32 -lwinmm -luser32 -lassimp -O2
 
+
+// DEBUG WIN
+// g++ src/*.cpp lib/build/win/*.o -I lib/include/ -Llib/build/win -o bin/Game.exe -lSDL2 -lopengl32 -lgdi32 -lwinmm -luser32 -lassimp -g -O0
+
 #include "Engine.h"
 
 // int main(int argc, char** argv){

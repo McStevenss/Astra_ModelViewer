@@ -108,10 +108,10 @@ public:
         // always good practice to set everything back to defaults once configured.
         glActiveTexture(GL_TEXTURE0);
     }
+    unsigned int VBO, EBO;
 
 private:
     // render data 
-    unsigned int VBO, EBO;
 
     // initializes all the buffer objects/arrays
     void setupMesh()
