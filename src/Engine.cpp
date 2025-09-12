@@ -43,7 +43,9 @@ void Engine::Initialize()
      // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(win, glctx);
     ImGui_ImplOpenGL3_Init("#version 410");
-    SDL_GL_SetSwapInterval(1);
+    // SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(-1);
+
     
     glEnable(GL_DEPTH_TEST);
     glCullFace(GL_BACK);
@@ -85,18 +87,37 @@ void Engine::Start()
     Grid grid(20, CELL_SIZE); // 20x20 grid, spacing = 1.0
 
     Shader gridShader("shaders/grid.vs","shaders/grid.fs"); 
-    Shader modelShader("shaders/model.vs","shaders/model.fs");
+    // Shader modelShader("shaders/model.vs","shaders/model.fs");
+    // Shader modelShader("shaders/model_animated.vs","shaders/model_animated.fs");
+    Shader modelShader("shaders/model_original.vs","shaders/model.fs");
 
-    // model = new Model("models/UE_Hero_Male/Superhero_Male.gltf",false,true);
-    model = new Model("models/backpack/backpack.obj",false,false);
+
+    // timing
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
+    
+    
+    // model = new Model("models/Vampire/Unarmed Walk Forward.dae",false,true);
+    // Animation animation("models/Vampire/Unarmed Walk Forward.dae",model);
+    model = new Model("models/Vampire_v2/Idle.dae",false,true);
+    Animation animation("models/Vampire_v2/Idle.dae",model);
+    Animator animator(&animation);
+
 
     while(running)
     {
         float dt = GetDeltaTime();
+
+        // float currentTime = SDL_GetTicks64();
+        float currentFrame = SDL_GetTicks64();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
+        animator.UpdateAnimation(dt);
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        // ImVec2 imgPos = RenderGUI(*model);
         ImVec2 imgPos = RenderGUI();
         ImGui::Render();
         
@@ -109,7 +130,9 @@ void Engine::Start()
         float localY = my - imgPos.y;
         bool insideImage = (localX >= 0 && localX <= EditorWindowWidth && localY >= 0 && localY <= EditorWindowHeight);
         
-        targetpos.y = model->aabbMax.y/2.0f;
+        // targetpos.y = model->aabbMax.y/2.0f;
+        targetpos.y = cameraHeight;
+        // targetpos.y = model->localAabbMax.y/2.0f;
         // targetpos.y = 0;
 
         cam.Update(dt);
@@ -125,12 +148,17 @@ void Engine::Start()
         gridShader.setMat4("uVP", VP);
         grid.Render(gridShader);
 
+        
         lightPosition.x = targetpos.x + lightOrbitRadius * cosf(lightYaw);
         lightPosition.z = targetpos.z + lightOrbitRadius * sinf(lightYaw);
         lightPosition.y = lightHeight;
         
-        model->UpdateModelMatrix();
         modelShader.use();
+            auto transforms = animator.GetFinalBoneMatrices();
+            for (int i = 0; i < transforms.size(); ++i)
+            modelShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+        
+            model->UpdateModelMatrix();
             modelShader.setMat4("view",View);
             modelShader.setMat4("projection",Projection);
             modelShader.setMat4("model",model->ModelMatrix);
@@ -275,6 +303,7 @@ ImVec2 Engine::RenderGUI()
     ImGui::Text("Pitch: %.1f", cam.pitch);
     ImGui::Text("Distance: %.1f", cam.distance);
     ImGui::Text("Target Position: %.1f, %.1f, %.1f", targetpos.x,targetpos.y,targetpos.z);
+    ImGui::SliderFloat("Cam Height", &cameraHeight, 0.00, 10.0f, "%.2f");
     
     
     ImGui::SeparatorText("Model");

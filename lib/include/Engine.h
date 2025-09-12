@@ -25,6 +25,9 @@
 #include "Mesh.hpp"
 #include "CustomFileHeaders.h"
 #include <unordered_map>
+#include "Animation.h"
+#include "Animator.h"
+
 class Engine {
 
     public:
@@ -69,8 +72,9 @@ class Engine {
 
         glm::vec3 lightPosition = glm::vec3(0.0f,0.0f,0.0f);
         float lightOrbitRadius = 10;
-        float lightYaw = 0;
-        float lightHeight = 25;
+        // float lightYaw = 0;
+        float lightYaw = 90;
+        float lightHeight = 2.6;
 
         std::vector<glm::vec3> ringVerts;
 
@@ -89,6 +93,7 @@ class Engine {
         float EditorWindowWidth;
         float EditorWindowHeight;
         bool flipTexture = false;
+        float cameraHeight = 1.25f;
 
         int mx=0,my=0;
         // ------------ Config ------------
