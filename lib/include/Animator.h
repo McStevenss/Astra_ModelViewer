@@ -73,6 +73,43 @@ class Animator
             return m_FinalBoneMatrices;
         }
 
+        glm::vec3 GetBoneGlobalPosition(const std::string& boneName)
+        {
+            auto boneInfoMap = m_CurrentAnimation->GetBoneIDMap();
+            if (!m_CurrentAnimation) return glm::vec3(-1.0f);
+
+            glm::mat4 globalTransform = GetBoneGlobalTransform(boneName);
+            return glm::vec3(globalTransform[3]);
+        }
+
+        glm::mat4 GetBoneGlobalTransform(const std::string& boneName)
+        {
+            glm::mat4 result = glm::mat4(1.0f);
+            CalculateBoneGlobalTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f), boneName, result);
+            return result;
+        }
+
+        void CalculateBoneGlobalTransform(const AssimpNodeData* node, glm::mat4 parentTransform, 
+                                        const std::string& targetBone, glm::mat4& outTransform)
+        {
+            glm::mat4 nodeTransform = node->transformation;
+
+            Bone* bone = m_CurrentAnimation->FindBone(node->name);
+            if (bone)
+            {
+                bone->Update(m_CurrentTime);
+                nodeTransform = bone->GetLocalTransform();
+            }
+
+            glm::mat4 globalTransform = parentTransform * nodeTransform;
+
+            if (node->name == targetBone)
+                outTransform = globalTransform;
+
+            for (int i = 0; i < node->childrenCount; i++)
+                CalculateBoneGlobalTransform(&node->children[i], globalTransform, targetBone, outTransform);
+        }
+
     private:
         std::vector<glm::mat4> m_FinalBoneMatrices;
         Animation* m_CurrentAnimation;

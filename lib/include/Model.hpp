@@ -48,6 +48,10 @@ public:
     glm::vec3 Scale = { 1.0f, 1.0f, 1.0f };
     glm::mat4 ModelMatrix = glm::mat4(1.0f);
 
+    float scaleFactor = 0.01f; // what makes the model fit
+    // glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(scaleFactor));
+    // rootTransform = scaleMat * rootTransform; // multiply the root node's transform
+
     glm::vec3 aabbMin = glm::vec3(FLT_MAX);
     glm::vec3 aabbMax = glm::vec3(-FLT_MAX);
 
@@ -275,8 +279,8 @@ private:
         {
             Vertex vertex;
             SetVertexBoneDataToDefault(vertex);
-
             vertex.Position = AssimpGLMHelpers::GetGLMVec(mesh->mVertices[i]);
+            
             minPoint = glm::min(minPoint, vertex.Position);
             maxPoint = glm::max(maxPoint, vertex.Position);
             // normals
@@ -382,41 +386,6 @@ private:
         }
         return textures;
     }
-
-    // void ExtractBoneWeightForVertices(std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
-    // {
-    //     for (int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
-    //     {
-    //         int boneID = -1;
-    //         std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
-    //         if (mBoneInfoMap.find(boneName) == mBoneInfoMap.end())
-    //         {
-    //             BoneInfo newBoneInfo;
-    //             newBoneInfo.id = mBoneCounter;
-    //             newBoneInfo.offset = ConvertMatrixToGLM(
-    //                 mesh->mBones[boneIndex]->mOffsetMatrix);
-                   
-    //             mBoneInfoMap[boneName] = newBoneInfo;
-    //             boneID = mBoneCounter;
-    //             mBoneCounter++;
-    //         }
-    //         else
-    //         {
-    //             boneID = mBoneInfoMap[boneName].id;
-    //         }
-    //         assert(boneID != -1);
-    //         auto weights = mesh->mBones[boneIndex]->mWeights;
-    //         int numWeights = mesh->mBones[boneIndex]->mNumWeights;
-
-    //         for (int weightIndex = 0; weightIndex < numWeights; ++weightIndex)
-    //         {
-    //             int vertexId = weights[weightIndex].mVertexId;
-    //             float weight = weights[weightIndex].mWeight;
-    //             assert(vertexId <= vertices.size());
-    //             SetVertexBoneData(vertices[vertexId], boneID, weight);
-    //         }
-    //     }
-    // }
 
     void ExtractBoneWeightForVertices(std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
 	{

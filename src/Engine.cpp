@@ -99,8 +99,12 @@ void Engine::Start()
     
     // model = new Model("models/Vampire/Unarmed Walk Forward.dae",false,true);
     // Animation animation("models/Vampire/Unarmed Walk Forward.dae",model);
-    model = new Model("models/Vampire_v2/Idle.dae",false,true);
-    Animation animation("models/Vampire_v2/Idle.dae",model);
+    // model = new Model("models/Vampire_v2/Idle.dae",false,true);
+    // Animation animation("models/Vampire_v2/Idle.dae",model);
+    model = new Model("models/Vampire_v3/Hip Hop Dancing.dae",false,true);
+    Animation animation("models/Vampire_v3/Hip Hop Dancing.dae",model);
+
+    
     Animator animator(&animation);
 
 
@@ -130,10 +134,10 @@ void Engine::Start()
         float localY = my - imgPos.y;
         bool insideImage = (localX >= 0 && localX <= EditorWindowWidth && localY >= 0 && localY <= EditorWindowHeight);
         
-        // targetpos.y = model->aabbMax.y/2.0f;
-        targetpos.y = cameraHeight;
-        // targetpos.y = model->localAabbMax.y/2.0f;
-        // targetpos.y = 0;
+        glm::vec3 headPos = animator.GetBoneGlobalPosition("mixamorig_Head");
+        targetpos = headPos;
+        // targetpos.y = headPos.y;
+        // targetpos.y = cameraHeight;
 
         cam.Update(dt);
         glm::mat4 View = cam.view();

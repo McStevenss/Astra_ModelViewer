@@ -32,6 +32,8 @@ class Animation
             m_TicksPerSecond = animation->mTicksPerSecond;
             aiMatrix4x4 globalTransformation = scene->mRootNode->mTransformation;
             globalTransformation = globalTransformation.Inverse();
+
+        
 			// m_RootTransform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(scene->mRootNode->mTransformation);
             ReadHierarchyData(m_RootNode, scene->mRootNode);
             ReadMissingBones(animation, *model);
@@ -40,6 +42,7 @@ class Animation
         ~Animation()
         {
         }
+
 
         Bone* FindBone(const std::string& name)
         {
@@ -103,6 +106,7 @@ class Animation
                 dest.children.push_back(newData);
             }
         }
+
         float m_Duration;
         int m_TicksPerSecond;
 		// glm::mat4 m_RootTransform;
