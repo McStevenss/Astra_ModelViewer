@@ -101,11 +101,18 @@ void Engine::Start()
     // Animation animation("models/Vampire/Unarmed Walk Forward.dae",model);
     // model = new Model("models/Vampire_v2/Idle.dae",false,true);
     // Animation animation("models/Vampire_v2/Idle.dae",model);
-    model = new Model("models/Vampire_v3/Hip Hop Dancing.dae",false,true);
-    Animation animation("models/Vampire_v3/Hip Hop Dancing.dae",model);
+    // model = new Model("models/Vampire_v3/Hip Hop Dancing.dae",false,true);
+    
+    model = new Model("models/Vampire_base/Vampire A Lusth.dae",false,true);
+    
+    
+    animations.emplace("battlecry", Animation("models/animations/Standing Taunt Battlecry.dae",model));
+    animations.emplace("running", Animation("models/animations/Running.dae",model));
+    animations.emplace("idle", Animation("models/animations/Neutral Idle.dae",model));
+    // Animation animation_battleCry("models/animations/Standing Taunt Battlecry.dae",model);
 
     
-    Animator animator(&animation);
+    Animator animator(&animations["idle"]);
 
 
     while(running)
@@ -122,7 +129,7 @@ void Engine::Start()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        ImVec2 imgPos = RenderGUI();
+        ImVec2 imgPos = RenderGUI(animator);
         ImGui::Render();
         
         BindFramebuffer();
@@ -134,10 +141,10 @@ void Engine::Start()
         float localY = my - imgPos.y;
         bool insideImage = (localX >= 0 && localX <= EditorWindowWidth && localY >= 0 && localY <= EditorWindowHeight);
         
-        glm::vec3 headPos = animator.GetBoneGlobalPosition("mixamorig_Head");
-        targetpos = headPos;
+        // glm::vec3 headPos = animator.GetBoneGlobalPosition("mixamorig_Head");
+        // targetpos = headPos;
         // targetpos.y = headPos.y;
-        // targetpos.y = cameraHeight;
+        targetpos.y = cameraHeight;
 
         cam.Update(dt);
         glm::mat4 View = cam.view();
@@ -266,7 +273,7 @@ void Engine::UnbindFramebuffer()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-ImVec2 Engine::RenderGUI()
+ImVec2 Engine::RenderGUI(Animator& animator)
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(ScreenWidth*0.8f, ScreenHeight), ImGuiCond_Always);
@@ -317,7 +324,16 @@ ImVec2 Engine::RenderGUI()
     ImGui::SliderFloat("Height", &lightHeight, 0.00, 25.0f, "%.2f");
     ImGui::Text("AABB MAX-y: %.5f", model->aabbMax.y);
     ImGui::Text("AABB MIN-y: %.5f", model->aabbMin.y);
+    
+    ImGui::SeparatorText("Animations");
 
+
+    const char* animationNames[] = {"battlecry", "running", "idle"};
+    static int currentAnimationIndex = 2;
+    if (ImGui::Combo("Brush Mode", &currentAnimationIndex, animationNames, IM_ARRAYSIZE(animationNames))) {
+        animator.PlayAnimation(&animations[animationNames[currentAnimationIndex]]);
+    }
+    
     
     ImGui::SeparatorText("Model Loader");
     ImGui::InputText("Filepath", filepath, IM_ARRAYSIZE(filepath));     

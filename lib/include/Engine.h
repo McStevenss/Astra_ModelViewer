@@ -48,7 +48,8 @@ class Engine {
         float GetDeltaTime();
         void LoadNewModel(string const &path, bool flipUvs);
         // ImVec2 RenderGUI(Model& model);
-        ImVec2 RenderGUI();
+        // ImVec2 RenderGUI();
+        ImVec2 RenderGUI(Animator& animator);
 
         void SaveModelBinary(const Model& model, const std::string& path);
         Model* LoadModelBinary(const std::string& path);
@@ -68,7 +69,7 @@ class Engine {
         // std::unique_ptr<Model> model;  // starts as nullptr
 
         Model *model;
-
+        std::map<std::string, Animation> animations;
 
         glm::vec3 lightPosition = glm::vec3(0.0f,0.0f,0.0f);
         float lightOrbitRadius = 10;
